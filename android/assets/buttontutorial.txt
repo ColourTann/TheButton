@@ -1,3 +1,4 @@
+swear:test: 2: 3
 swear:fuck: 9.72: 10.11
 swear:fucking: 15.79: 16.42
 swear:fucking: 23.02: 24.04

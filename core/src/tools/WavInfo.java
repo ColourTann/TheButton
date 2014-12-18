@@ -1,13 +1,17 @@
 package tools;
 
+import game.Main;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
@@ -20,13 +24,13 @@ public class WavInfo {
 	public int bytesPerSample;
 	public float wavLength;
 	public Texture waveForm;
-	public Sound clip;
 	public String path;
 	float seconds=0;
 	public float delay=0;
 	public byte[] bonkBytes;
 	public ArrayList<Tag> tags = new ArrayList<WavInfo.Tag>();
 	public static float bonkSamplesPerSecond=100;
+	private Music audio;
 	public WavInfo(String path, boolean createBonks){
 		this.path=path;
 
@@ -41,7 +45,9 @@ public class WavInfo {
 			makeBonk();
 		}
 		bonkBytes=Gdx.files.internal(path+".bonk").readBytes();
-		
+		Main.manager.load(path+".mp3", Music.class);
+		Main.manager.finishLoading();
+		audio=Main.manager.get(path+".mp3", Music.class);
 		
 		//tag stuff//
 		FileHandle handle=Gdx.files.internal(path+".txt");
@@ -78,9 +84,6 @@ public class WavInfo {
 
 		try {
 			file.createNewFile();
-
-			FileWriter fw = new FileWriter(file.getAbsoluteFile());
-			BufferedWriter bw = new BufferedWriter(fw);
 			java.nio.file.Files.write(file.toPath(), bonks, new OpenOption[]{});
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -143,6 +146,13 @@ public class WavInfo {
 				+ "WavLength: "+wavLength;
 	}
 	
+	public ArrayList<Tag> getOffsetTags(float offset){
+		ArrayList<Tag> offsetTags = new ArrayList<WavInfo.Tag>();
+		for(Tag t:tags){
+			offsetTags.add(t.offset(offset));
+		}
+		return offsetTags;
+	}
 	
 	public class Tag{
 		public float start;
@@ -170,7 +180,7 @@ public class WavInfo {
 			return "\""+specific+"\"";
 		}
 		public boolean isCensored() {
-			return censored>(end-start)/10f;
+			return censored>(end-start)/2f;
 		}
 		public void reset() {
 			used=false;
@@ -186,5 +196,25 @@ public class WavInfo {
 			t.offset=offset;
 			return t;
 		}
+		public Tag offset(float amount){
+			Tag result = copy();
+			result.offset+=amount;
+			result.start+=offset;
+			result.end+=offset;
+			return result;
+		}
+		public boolean isAt(float f) {
+			return f>start&&f<end;
+		}
+	}
+
+
+	public Music getAudio() {
+		return audio;
+	}
+
+
+	public float getLength() {
+		return (float)bonkBytes.length/(float)bonkSamplesPerSecond;
 	}
 }
