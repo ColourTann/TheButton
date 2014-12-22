@@ -1,0 +1,2 @@
+swear:shit: 1.51: 2.22
+swear:fucking: 6.75: 7.41

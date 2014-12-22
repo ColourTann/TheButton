@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
@@ -29,63 +30,80 @@ public class WavInfo {
 	public float delay=0;
 	public byte[] bonkBytes;
 	public ArrayList<Tag> tags = new ArrayList<WavInfo.Tag>();
-	public static float bonkSamplesPerSecond=100;
 	private Music audio;
-	public WavInfo(String path, boolean createBonks){
+	private WavInfo(String path, boolean createBonks){
 		this.path=path;
-
+		
+		FileHandle handle= Gdx.files.internal(path+".mp3");
+		Main.manager.load(handle.path(), Music.class);
+		
+		setupTags();
 		if(createBonks){
-			FileHandle handle = Gdx.files.internal(path+".wav");
-			allBytes = handle.readBytes();
+			FileHandle wavHandle = Gdx.files.internal(path+".wav");
+			allBytes = wavHandle.readBytes();
 			channels=allBytes[22];
 			sampleRate=twoBytesToShort(allBytes[24], allBytes[25]);
 			bytesPerSample=allBytes[34]/8;
 			wavLength=(allBytes.length-40)/(float)bytesPerSample/(float)sampleRate/(float)channels;
 			setupSamples();
 			makeBonk();
+			System.out.println("making bonk");
 		}
-		bonkBytes=Gdx.files.internal(path+".bonk").readBytes();
-		Main.manager.load(path+".mp3", Music.class);
+		FileHandle bonkHandle=Gdx.files.internal(path+".bonk");
+		bonkBytes=bonkHandle.readBytes();
 		Main.manager.finishLoading();
-		audio=Main.manager.get(path+".mp3", Music.class);
+		audio=Main.manager.get(handle.path(), Music.class);
+	
+		audio.setLooping(false);
 		
+		
+	}
+	
+	private void setupTags(){
 		//tag stuff//
-		FileHandle handle=Gdx.files.internal(path+".txt");
-		if(!handle.exists()){
-			System.out.println("returning because no tags");
-			return; //no tags//
-		}
-		char[] chars = new char[2000];
-		try {
-			handle.reader().read(chars);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		for(String tagString:new String(chars).split("\n")){
-			tagString=tagString.trim();
-			if(tagString.length()==0)continue;
-			tags.add(new Tag(tagString));
-		}
+				FileHandle handle=Gdx.files.internal(path+".txt");
+				System.out.println(handle);
+				if(!handle.exists()){
+					System.out.println("returning because no tags");
+					return; //no tags//
+				}
+				char[] chars = new char[2000];
+				try {
+					handle.reader().read(chars);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				for(String tagString:new String(chars).split("\n")){
+					tagString=tagString.trim();
+					if(tagString.length()==0)continue;
+					tags.add(new Tag(tagString));
+				}
 	}
 
-
+	
+	private static int resampleRate=30;
+	private static float resampleDistance=.0005f;
+	public static float bonkSamplesPerSecond=300;
 	private void makeBonk() {
-		float samplesPerSecond=bonkSamplesPerSecond;
-		int resampleRate=0;
-		float resampleDistance=.000005f;
-		float increment = 1/samplesPerSecond;
-		byte[] bonks = new byte[(int) (samplesPerSecond*wavLength)+1];
+		float increment = 1/bonkSamplesPerSecond;
+		byte[] bonks = new byte[(int) (bonkSamplesPerSecond*wavLength)+1];
 		int bonkIndex=0;
 		for(float i=0;i<wavLength-.1;i+=increment){
 			bonks[bonkIndex]= getSample(i, resampleRate, resampleDistance);
 			bonkIndex++;
 		}
-		File file = new File(Gdx.files.getLocalStoragePath()+"buttontutorial.bonk");
-
+		
+		String bonkPath = (Gdx.files.getLocalStoragePath()+path).replace('/', '\\');
+		String folderPath=bonkPath.substring(0, bonkPath.lastIndexOf("\\"));
+		File folderMaker = new File(folderPath);
+		folderMaker.mkdirs();
+		bonkPath+=".bonk";
+		File file = new File(bonkPath);
 		try {
 			file.createNewFile();
 			java.nio.file.Files.write(file.toPath(), bonks, new OpenOption[]{});
 		} catch (IOException e) {
+			System.out.println(file.getPath());
 			e.printStackTrace();
 		}
 	}
@@ -199,8 +217,8 @@ public class WavInfo {
 		public Tag offset(float amount){
 			Tag result = copy();
 			result.offset+=amount;
-			result.start+=offset;
-			result.end+=offset;
+			result.start+=amount;
+			result.end+=amount;
 			return result;
 		}
 		public boolean isAt(float f) {
@@ -216,5 +234,13 @@ public class WavInfo {
 
 	public float getLength() {
 		return (float)bonkBytes.length/(float)bonkSamplesPerSecond;
+	}
+	
+	private static HashMap<String, WavInfo> infoMap = new HashMap<String, WavInfo>();
+	public static WavInfo getInfo(String path){
+		if(infoMap.get(path)==null){
+			infoMap.put(path, new WavInfo(path, Main.createBonks));
+		}
+		return infoMap.get(path);
 	}
 }

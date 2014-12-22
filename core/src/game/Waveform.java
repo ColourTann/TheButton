@@ -27,8 +27,6 @@ public class Waveform extends Group{
 	@Override
 	public void act(float delta){
 		super.act(delta);
-		
-		//addActor(new TextWisp("hi", Fonts.font, Colours.blue, 50, 50, 500, 0));
 	}
 
 	BitSet set= new BitSet();
@@ -47,7 +45,8 @@ public class Waveform extends Group{
 					batch.setColor(0,1,0,1);
 				}
 			}
-			Draw.drawScaled(batch, Draw.getSq(), x, getHeight()/2-sample/2, 1, sample);
+			sample*=Show.waveFormHeight;
+			Draw.drawScaled(batch, Draw.getSq(), (int)x, getHeight()/2-sample/2, 1, sample);
 		}
 		batch.setColor(1,0,0,1);
 		Draw.drawScaled(batch, Draw.getSq(), Gdx.graphics.getWidth()/2-1, 0, 1, Gdx.graphics.getHeight());

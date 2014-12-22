@@ -1,5 +1,7 @@
 package game;
 
+import java.util.ArrayList;
+
 import tools.WavInfo;
 import util.Draw;
 import util.Fonts;
@@ -17,46 +19,58 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 public class Main extends ApplicationAdapter {
+	
+	public void create () {	
+		initialise();
+		loadMusic();
+		playSound();
+		setupShow();
+	}
+	
 	SpriteBatch batch;
-	Texture img;
 	Music m;
 	WavInfo info;
 	byte[] bytes;
 	
-	boolean createBonks=false;
+	public static boolean createBonks=false;
 	public static AssetManager manager;
 	String path;
 	FileHandle handle;
 	float ticks=0;
-	
+	public static String delim = "/";
 	Music bg;
 	public static Sound beep;
 	Stage stage;
 	Show show;
-	@Override
-	public void create () {
+	static ArrayList<WavInfo> infos = new ArrayList<WavInfo>();
+
+	private void initialise() {
 		stage=new Stage(new ScreenViewport());
 		Fonts.init(false);
 		manager=new AssetManager();
 		batch = new SpriteBatch();
-		img = new Texture("badlogic.jpg");
-		info=new WavInfo("buttontutorial", createBonks);
-		handle = Gdx.files.internal("buttontutorial.mp3");
-		Main.manager.load(handle.path(), Music.class);
+		Gdx.input.setInputProcessor(stage);
+		
+	}
+	
+	private void loadMusic() {
 		Main.manager.load("beep.mp3", Sound.class);
 		Main.manager.load("bg.mp3", Music.class);
-		System.out.println("starting finish load");
 		manager.finishLoading();
-		System.out.println("finished finish load");
 		bg=manager.get("bg.mp3", Music.class);
+		beep=manager.get("beep.mp3", Sound.class);
+		
+	}
+	
+	private void playSound() {
 		bg.setVolume(.3f);
 		bg.play();
-		beep=manager.get("beep.mp3", Sound.class);
-		manager.get(handle.path(), Music.class).play();
-		bytes= info.bonkBytes;
-		Gdx.input.setInputProcessor(stage);
-		show = new Show();
-		show.addInfo(info);
+	}
+	
+	private void setupShow() {
+		show = new Show();	
+		//show.addInfo(WavInfo.getInfo("intro"));
+		show.setupShow(Gdx.files.internal("shows/healthcare").path(), 3);
 		stage.addActor(show.getWaveForm());
 	}
 
@@ -83,8 +97,6 @@ public class Main extends ApplicationAdapter {
 		Fonts.font.draw(batch, "FPS: "+Gdx.graphics.getFramesPerSecond(), 0,Gdx.graphics.getHeight());
 		batch.flush();
 		stage.draw();
-		
-		
 		batch.end();
 	}
 }

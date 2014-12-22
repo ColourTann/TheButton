@@ -15,39 +15,71 @@ public class Show{
 	ArrayList<Byte> waveHeight= new ArrayList<Byte>();
 	ArrayList<Music> musics= new ArrayList<Music>();
 	ArrayList<Tag> tags= new ArrayList<Tag>();
+	ArrayList<Float> trackLengths= new ArrayList<Float>();
 	float totalTime=0;
 	float currentTime=0;
+	float timeThroughSong=0;
 	Waveform waveform;
-	static int waveFormHeight=3;
-	static float speed=3;
+	static int waveFormHeight=4;
+	static float speed=1f;
 	boolean cheating=true;
 	Tag nextTag;
+	int musicPlaying=-1;
 	public Show(){
-		
+
 	}
-	
-	public void addInfo(WavInfo info){
+
+	private static int variations=3; 
+	public void setupShow(String path, int length){
+		String delim = Main.delim;
+		path=path.replaceAll("/", delim);
+		addInfo(WavInfo.getInfo(path+delim+"intro"));	//add intro
+		for(int i=0;i<length;i++){
+			if(Main.createBonks){ 	//setup all the bonks
+				for(int v=0;v<variations;v++){
+					addInfo(WavInfo.getInfo(path+delim+"guest"+delim+i+v));
+					addInfo(WavInfo.getInfo(path+delim+"host"+delim+i+v));
+				}
+			}
+			else{
+				int random = (int) (Math.random()*variations);
+				addInfo(WavInfo.getInfo(path+delim+"guest"+delim+i+random));	//guest random
+				addInfo(WavInfo.getInfo(path+delim+"host"+delim+i+random));	//host random
+			}
+		}
+		addInfo(WavInfo.getInfo(path+delim+"outro"));	//add outro
+	}
+
+	public void addInfo(WavInfo info){	
 		for(byte b:info.bonkBytes){
 			waveHeight.add(b);
 		}
 		musics.add(info.getAudio());
 		tags.addAll(info.getOffsetTags(totalTime));
 		totalTime+=info.getLength();
+		trackLengths.add(info.getLength());
 	}
-	
+
 	public void update(float delta){
 		currentTime+=delta;
+		timeThroughSong+=delta;
+		if(musicPlaying==-1||timeThroughSong>=trackLengths.get(musicPlaying)){
+			timeThroughSong=0;
+			musicPlaying++;
+			musics.get(musicPlaying).stop();
+			musics.get(musicPlaying).play();
+		}
 		if(Gdx.input.isButtonPressed(0)){
 			scramble(delta);
 			prevIndex=getSampleIndexAt(waveform.getBroadcastX());
 		}
 		else prevIndex=-1;
-		
+
 		if(nextTag==null){
 			nextTag=getNextTag();
 		}
-		
-		if(positionToTime(waveform.getWidth()/2)>nextTag.end){
+
+		if(nextTag!=null&&positionToTime(waveform.getWidth()/2)>nextTag.end){
 			String wispTitle="ERROR";
 			Color wispCol=Color.MAGENTA;
 			if(nextTag.isCensored()){
@@ -64,13 +96,14 @@ public class Show{
 			waveform.addActor(wisp);
 			nextTag=null;
 		}
-		
+
 	}
 
-	
+
 	private Tag getNextTag() {
 		for(Tag t:tags){
 			if(t.start>currentTime){
+				System.out.println(t);
 				return t;
 			}
 		}
@@ -89,15 +122,15 @@ public class Show{
 			t.censored+=delta;
 		}
 	}
-                                                                                        	
+
 
 	//Getters//
 
 	public int getSample(float x) {
 		int index = getSampleIndexAt(x);
-		
-		if (index<0)return 0;
-		return waveHeight.get(getSampleIndexAt(x));
+
+		if (index<0||index>=waveHeight.size())return 0;
+		return waveHeight.get(index);
 	}
 
 	public boolean showSwears() {
@@ -107,23 +140,23 @@ public class Show{
 	public boolean bleepedAt(float x) {
 		return getSample(x)==getBleepHeight();
 	}
-	
+
 	private int getSampleIndexAt(float x){
 		return timeToSampleIndex(positionToTime(x));
 	}
-	
+
 	private byte getBleepHeight() {
 		return 110;
 	}
-	
+
 	private float positionToTime(float x){
 		return (x-waveform.getWidth())/speed/WavInfo.bonkSamplesPerSecond+currentTime;
 	}
-	
+
 	private int timeToSampleIndex(float time){
 		return (int)(time*WavInfo.bonkSamplesPerSecond);
 	}
-	
+
 	Tag getTagAt(float x) {
 		float time = positionToTime(x);
 		for(Tag t: tags){
@@ -131,11 +164,11 @@ public class Show{
 		}
 		return null;
 	}
-	
+
 	public Waveform getWaveForm(){
 		if(waveform==null)waveform= new Waveform(this);
 		return waveform;
 	}
 
-	
+
 }
